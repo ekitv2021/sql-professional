@@ -1,3 +1,4 @@
+
 use salesdata;
 
 show tables;
