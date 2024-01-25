@@ -1,4 +1,3 @@
-
 use salesdata;
 
 show tables;
@@ -212,3 +211,97 @@ end;
 
 call getcustomergrade(173,@result);
 select @result;
+
+/*while loop*/
+ 
+use salesdata;
+ 
+drop procedure loopexample1;
+ 
+delimiter $
+create procedure loopexample1(lastvalue int)
+begin
+declare i int default 1;
+declare str varchar(100);
+set str = ''; /*string is empty initially*/
+while i <= lastvalue do /*pre-test*/
+	set str = concat(str, i, ' ');
+    set i = i + 1;
+end while;
+select str;
+end $
+
+call loopexample1(30);
+
+delimiter //
+create procedure loopexample2(lastvalue int)
+begin 
+declare i int default 1;
+declare str varchar(100);
+set str = ''; /*string is empty initially*/
+repeat
+	set str = concat(str, i, ' ');
+    set i = i + 1;
+until i > lastvalue /*post-test*/
+end repeat;
+select str;
+end//
+
+call loopexample2(25);
+
+/*Cursors*/
+
+/*Write a stored procedure to fill the employees_name table
+with the data from the employees table. The name should be 
+concatenated and then saved in the employees_name table*/
+
+create table employees_name(
+	empid int,
+    empname varchar(50));
+    
+desc employees_name;
+
+delimiter $
+create procedure employee_name_cursor()
+begin
+/*declare the variable as the column values
+will be fetched in them by the fetch command*/
+declare done boolean default false;
+declare empid int;
+declare fname varchar(20);
+declare lname varchar(20);
+
+/*declare the cursor, make sure that the select
+query only contain the columns which we need*/
+declare cur cursor for
+select employeenumber, firstname, lastname
+from employees;
+
+/*declare the exception that is raised when there
+are no more rows to be fetched*/
+declare continue handler for not found set done=true;
+
+/*open the cursor, get the table from the database 
+into cursor memory*/
+open cur;
+
+/*fetch the rows and put the values of each row
+in the variable*/
+/*read_loop is the label for the loop so that we 
+can exit using it*/
+while not done do
+fetch cur into empid, fname, lname;
+insert into employees_name values(empid, concat(fname,' ',lname));
+end while;
+
+/*close the cursor once the task is completed*/
+close cur;
+end;
+
+call employee_name_cursor();
+
+drop procedure employee_name_cursor;
+
+use salesdata;
+
+select * from employees_name;
