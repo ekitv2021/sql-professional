@@ -253,3 +253,197 @@ end;
 call Employee_Promotion_Check();
 
 select * from employees;
+
+#######################################
+#Triggers
+
+use salesdata;
+
+create table student(
+	sid int primary key,
+    sname varchar(20) not null,
+    age int);
+    
+create table audit(
+	id int primary key auto_increment,
+    sid int,
+    sname varchar(20),
+    age int, 
+    action_date datetime,
+    action varchar(10));
+    
+delimiter $
+create trigger after_student_insert
+after insert 
+on student
+for each row
+begin
+	/*insert into audit
+    set action = 'insert',
+    action_date = now(),
+    sid = new.sid,
+    sname = new.sname,
+    age = new.age;*/
+	insert into audit(sid, sname, age, 
+				action_date,action)
+    values(new.sid, new.sname, new.age, now(), 'insert');
+end $
+
+show triggers;
+
+insert into student values(14,'scott',15);
+
+select * from student;
+
+select * from audit;
+
+delimiter $
+create trigger after_student_delete
+after delete
+on student
+for each row
+begin
+	insert into audit
+    set action = 'delete',
+    action_date = now(),
+    sid = old.sid,
+    sname = old.sname,
+    age = old.age;
+end $
+
+delete from student where sid = 1;
+
+delete from student;
+
+delimiter $
+create trigger after_student_update
+after update
+on student
+for each row
+begin
+	insert into audit
+    set action = 'update_old',
+    action_date = now(),
+    sid = old.sid,
+    sname = old.sname,
+    age = old.age;
+    insert into audit
+    set action = 'update_new',
+    action_date = now(),
+    sid = new.sid,
+    sname = new.sname,
+    age = new.age;
+end $
+
+insert into student values(14,'scott',15);
+
+select * from audit;
+
+update student set age = 16 where sid = 14;
+
+/*ARISOFT Corporation wants to monitor product 
+stock levels and generate alerts when the quantity 
+in stock falls below a specified threshold. 
+Create an SQL query or trigger that automatically 
+notifies the relevant stakeholders when a product's 
+stock level becomes critical.*/
+
+select * from products;
+
+delimiter $
+create trigger after_products_update
+after update
+on products
+for each row
+begin
+	if new.quantityinstock <= 50 then
+		/*sqlstate 45000 is used to create
+        used defined exception*/
+		signal sqlstate '45000' 
+        set message_text = 'quantity is low';
+	end if;
+end $
+
+update products 
+set quantityinstock = quantityinstock - 10
+where productcode = 'S12_1099';
+
+delimiter $
+create trigger after_products_update
+after update
+on products
+for each row
+begin
+	if new.quantityinstock < 0 then
+		/*sqlstate 45000 is used to create
+        used defined exception*/
+		signal sqlstate '45000' 
+        set message_text = 'insufficient quantity';
+	end if;
+end $
+
+/*ARISOFT Corporation wants to provide customers 
+with a summary of their order history, including 
+the total amount spent and the number of orders 
+placed. Design an SQL query or procedure to 
+retrieve this information for a specific customer.*/
+
+select * from customers;
+
+select * from orders;
+
+select * from orderdetails;
+
+select c.customernumber,
+		count(o.ordernumber) 'totalorders',
+        sum(od.quantityordered * od.priceeach) 'totalamountspent'
+from customers c
+join orders o
+using(customernumber)
+join orderdetails od
+using(ordernumber)
+group by c.customernumber;
+
+/*The procurement team wants to analyze the distribution 
+of products among different vendors. 
+Create an SQL query to retrieve the count of products 
+supplied by each vendor (productVendor column in 
+the products table) and order the results by the 
+count in descending order.*/
+
+select * from products;
+
+select productvendor, count(productname) 'productcount'
+from products
+group by productvendor
+order by count(productname);
+
+/*The finance department needs a comprehensive 
+report on customer payment history. 
+Create an SQL query to retrieve the payment 
+details for a specific customer, including check 
+numbers, payment dates, and amounts.*/
+
+select * from payments;
+
+select customername, checknumber, paymentdate, amount
+from customers
+join 
+payments
+using (customernumber);
+
+/*ARISOFT Corporation wants to ensure that the reporting 
+hierarchy of employees is correctly represented. 
+Design an SQL query or procedure to validate that the 
+reportsTo field in the employees table accurately 
+reflects the organizational reporting structure.*/
+
+use salesdata;
+
+select * from employees;
+
+select emp.firstname 'employee', emp.reportsTo 'reportto', 
+mgr.employeenumber 'managerid', mgr.firstname 'manager'
+from employees emp
+left outer join employees mgr
+on(emp.reportsto = mgr.employeenumber);
